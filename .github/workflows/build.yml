@@ -21,8 +21,8 @@ jobs:
 
       - name: Check out VST3 SDK and VSTGUI
         run: |
-          git clone --depth 1 https://github.com/steinbergmedia/vst3sdk.git vst3sdk
-          git clone --depth 1 https://github.com/steinbergmedia/vstgui.git vst3sdk/vstgui4
+          git clone --depth 1 --recursive --shallow-submodules https://github.com/steinbergmedia/vst3sdk.git vst3sdk
+          ls vst3sdk/cmake/modules | grep -i SMTG_VST3_SDK
 
       - name: Build full version
         working-directory: vst3
