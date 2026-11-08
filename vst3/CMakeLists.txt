@@ -13,6 +13,11 @@ include(SMTG_VST3_SDK)
 
 project(Naginata VERSION 0.1.0 DESCRIPTION "Naginata: fuzz into wavefolder")
 
+# The VST3 SDK and VSTGUI contain Objective-C++ sources on macOS.
+if(APPLE)
+    enable_language(OBJC OBJCXX)
+endif()
+
 # VSTGUI static libraries are linked into the plugin shared module, so they need -fPIC.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
