@@ -1,0 +1,68 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out Naginata
+        uses: actions/checkout@v4
+
+      - name: Check out VST3 SDK and VSTGUI
+        run: |
+          git clone --depth 1 https://github.com/steinbergmedia/vst3sdk.git vst3sdk
+          git clone --depth 1 https://github.com/steinbergmedia/vstgui.git vst3sdk/vstgui4
+
+      - name: Build full version
+        working-directory: vst3
+        run: |
+          cmake -S . -B ../build-full -DCMAKE_BUILD_TYPE=Release -DNAGINATA_TRIAL_EXPIRY=0 \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          cmake --build ../build-full --config Release --target Naginata validator --parallel
+
+      - name: Build 15-day trial version
+        working-directory: vst3
+        run: |
+          EXP=$(( $(date -u +%s) + 15*86400 ))
+          echo "Trial expires at unix time $EXP"
+          cmake -S . -B ../build-trial -DCMAKE_BUILD_TYPE=Release -DNAGINATA_TRIAL_EXPIRY=$EXP \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          cmake --build ../build-trial --config Release --target Naginata validator --parallel
+
+      - name: Validate bundles with the Steinberg validator
+        run: |
+          VALIDATOR=$(find build-full -type f \( -name validator -o -name validator.exe \) | head -1)
+          FULL=$(find build-full -type d -name Naginata.vst3 | head -1)
+          TRIAL=$(find build-trial -type d -name Naginata.vst3 | head -1)
+          echo "validator: $VALIDATOR"
+          "$VALIDATOR" "$FULL"
+          "$VALIDATOR" "$TRIAL"
+
+      - name: Collect bundles
+        run: |
+          mkdir -p out/full out/trial
+          cp -R "$(find build-full -type d -name Naginata.vst3 | head -1)" out/full/
+          cp -R "$(find build-trial -type d -name Naginata.vst3 | head -1)" out/trial/
+
+      - name: Upload full version
+        uses: actions/upload-artifact@v4
+        with:
+          name: Naginata-full-${{ matrix.os }}
+          path: out/full
+
+      - name: Upload 15-day trial version
+        uses: actions/upload-artifact@v4
+        with:
+          name: Naginata-trial-15days-${{ matrix.os }}
+          path: out/trial

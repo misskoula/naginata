@@ -1,0 +1,11 @@
+# Local build output and packaged downloads
+build*/
+dist/
+out/
+vst3sdk/
+
+# Logs and analysis scratch
+*.log
+
+# Local test binaries
+dsp/test_render

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vstgui-ui-description version="1">
+    <template name="view" size="1060, 740">
+        <view class="CViewContainer" custom-view-name="NgntRoot" origin="0, 0" size="1060, 740"/>
+    </template>
+</vstgui-ui-description>
