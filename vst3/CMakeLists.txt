@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.25.0)
 # Path to the Steinberg VST3 SDK checkout (base, pluginterfaces, public.sdk, cmake submodules).
 set(VST3_SDK "${CMAKE_CURRENT_SOURCE_DIR}/../vst3sdk" CACHE PATH "VST3 SDK root")
 
-# Naginata needs no GUI yet and no SDK examples: keep the build small.
+# NAGINATA needs no GUI yet and no SDK examples: keep the build small.
 set(SMTG_ENABLE_VSTGUI_SUPPORT ON CACHE BOOL "" FORCE)
 set(SMTG_ENABLE_VST3_PLUGIN_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SMTG_ENABLE_VST3_HOSTING_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -11,7 +11,7 @@ set(SMTG_ENABLE_VST3_HOSTING_EXAMPLES OFF CACHE BOOL "" FORCE)
 list(APPEND CMAKE_MODULE_PATH "${VST3_SDK}/cmake/modules")
 include(SMTG_VST3_SDK)
 
-project(Naginata VERSION 0.1.0 DESCRIPTION "Naginata: fuzz into wavefolder")
+project(NAGINATA VERSION 0.1.0 DESCRIPTION "NAGINATA: fuzz into wavefolder")
 
 # The VST3 SDK and VSTGUI contain Objective-C++ sources on macOS.
 if(APPLE)
@@ -76,21 +76,30 @@ set(naginata_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/../dsp/naginata_dsp.h
 )
 
-smtg_add_vst3plugin(Naginata ${naginata_sources})
+smtg_add_vst3plugin(NAGINATA ${naginata_sources})
 
 if(CMAKE_CROSSCOMPILING AND MINGW)
     # Only the Linux-to-Windows cross-build needs this: the SDK adds linuxmain.cpp there, so the
     # Windows InitDll/ExitDll are supplied here. Native MSVC builds get them from the SDK's dllmain.
-    target_sources(Naginata PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/source/win_entry.cpp)
-    target_link_options(Naginata PRIVATE -static-libstdc++ -static-libgcc)
+    target_sources(NAGINATA PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/source/win_entry.cpp)
+    target_link_options(NAGINATA PRIVATE -static-libstdc++ -static-libgcc)
 endif()
 
-target_compile_features(Naginata PUBLIC cxx_std_17)
-target_compile_definitions(Naginata PRIVATE NAGINATA_TRIAL_EXPIRY=${NAGINATA_TRIAL_EXPIRY}LL)
-target_include_directories(Naginata PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_link_libraries(Naginata PRIVATE sdk vstgui_support)
+target_compile_features(NAGINATA PUBLIC cxx_std_17)
+target_compile_definitions(NAGINATA PRIVATE NAGINATA_TRIAL_EXPIRY=${NAGINATA_TRIAL_EXPIRY}LL)
+target_include_directories(NAGINATA PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_link_libraries(NAGINATA PRIVATE sdk vstgui_support)
 
-smtg_target_add_plugin_resources(Naginata
+smtg_target_add_plugin_resources(NAGINATA
     RESOURCES
         resource/ngnt.uidesc
+)
+
+# Lato for the panel. VSTGUI on Windows loads every font in the bundle's Fonts folder.
+smtg_target_add_plugin_resources(NAGINATA
+    RESOURCES
+        resource/Fonts/Lato-Regular.ttf
+        resource/Fonts/Lato-Bold.ttf
+        resource/Fonts/LICENSE-Lato.txt
+    OUTPUT_SUBDIRECTORY Fonts
 )

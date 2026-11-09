@@ -11,7 +11,8 @@
 
 namespace naginata {
 
-class NgntEditor : public VSTGUI::VST3Editor {
+// Resizable, keeps the 1060 x 740 proportions and scales the whole panel with the window.
+class NgntEditor : public VSTGUI::AspectRatioVST3Editor {
 public:
     explicit NgntEditor(Steinberg::Vst::EditController* controller);
 

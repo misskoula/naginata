@@ -261,7 +261,7 @@ tresult PLUGIN_API NaginataVst3::setState(IBStream* state) {
 }  // namespace Vst
 }  // namespace Steinberg
 
-#define stringPluginName "Naginata"
+#define stringPluginName "NAGINATA"
 #define stringCompanyName "misskoula"
 #define stringCompanyWeb "https://misskoula.itch.io"
 #define stringCompanyEmail ""

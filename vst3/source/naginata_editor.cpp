@@ -8,9 +8,15 @@
 
 #include <algorithm>
 #include <cmath>
+#include <ctime>
 #include <functional>
 #include <string>
 #include <vector>
+
+// Trial expiry in unix seconds, set by the build (0 = full version). Same default as naginata_vst3.cpp.
+#ifndef NAGINATA_TRIAL_EXPIRY
+#define NAGINATA_TRIAL_EXPIRY 0
+#endif
 
 namespace naginata {
 namespace {
@@ -37,15 +43,20 @@ class NgntKnob : public CControl {
 public:
     CLASS_METHODS(NgntKnob, CControl)
 
-    NgntKnob(const CRect& r, IControlListener* l, int32_t tag, CColor accent, const char* label)
-    : CControl(r, l, tag), accent_(accent), label_(label) {}
+    // inverted: the parameter runs the other way to the knob (up shows the parameter at 0).
+    NgntKnob(const CRect& r, IControlListener* l, int32_t tag, CColor accent, const char* label,
+             bool inverted = false)
+    : CControl(r, l, tag), accent_(accent), label_(label), inverted_(inverted) {}
+
+    // Knob position 0..1, from the parameter value
+    double shown() const { return inverted_ ? 1.0 - getValueNormalized() : getValueNormalized(); }
 
     void draw(CDrawContext* ctx) override {
         const CRect r = getViewSize();
         const double cx = (r.left + r.right) / 2.0;
         const double cy = r.top + 52.0;
         const double R = 34.0;
-        const double v = getValueNormalized();
+        const double v = shown();
 
         ctx->setLineWidth(2);
         for (int i = 0; i <= 10; ++i) {
@@ -79,14 +90,14 @@ public:
         if (!buttons.isLeftButton()) return kMouseEventNotHandled;
         dragging_ = true;
         startY_ = where.y;
-        startV_ = getValueNormalized();
+        startV_ = float(shown());
         beginEdit();
         return kMouseEventHandled;
     }
     CMouseEventResult onMouseMoved(CPoint& where, const CButtonState&) override {
         if (!dragging_) return kMouseEventNotHandled;
-        const float v = std::clamp(startV_ + float((startY_ - where.y) / 200.0), 0.f, 1.f);
-        setValueNormalized(v);
+        const float shownV = std::clamp(startV_ + float((startY_ - where.y) / 200.0), 0.f, 1.f);
+        setValueNormalized(inverted_ ? 1.f - shownV : shownV);
         valueChanged();
         invalid();
         return kMouseEventHandled;
@@ -101,6 +112,7 @@ public:
 private:
     CColor accent_;
     const char* label_;
+    bool inverted_ = false;
     bool dragging_ = false;
     CCoord startY_ = 0;
     float startV_ = 0;
@@ -275,6 +287,17 @@ public:
         ctx->drawString("SUM", CRect(560, 500, 900, 516), kLeftText);
         ctx->drawString("SYMMETRY", CRect(560, 580, 900, 596), kLeftText);
         ctx->drawString("PRESET", CRect(700, 4, 900, 18), kLeftText);
+
+        // Trial builds only: days left, counted from the expiry set at build time.
+        if (NAGINATA_TRIAL_EXPIRY != 0) {
+            const long long secondsLeft = static_cast<long long>(NAGINATA_TRIAL_EXPIRY) -
+                                          static_cast<long long>(std::time(nullptr));
+            const long long daysLeft = std::max(0LL, secondsLeft / 86400);
+            const std::string text = "TRIAL: " + std::to_string(daysLeft) + " DAYS LEFT";
+            ctx->setFont(font(10.0, kBoldFace));
+            ctx->setFontColor(kPink);
+            ctx->drawString(text.c_str(), CRect(700, 60, 1036, 76), kRightText);
+        }
     }
 
 private:
@@ -290,14 +313,16 @@ private:
 };
 
 void addKnob(CViewContainer* root, IControlListener* l, double x, double y, int32_t tag,
-             CColor accent, const char* label) {
-    root->addView(new NgntKnob(CRect(x, y, x + 96, y + 120), l, tag, accent, label));
+             CColor accent, const char* label, bool inverted = false) {
+    // 110 px wide, so a label up to 110 px fits; neighbouring knobs are 110 px apart.
+    root->addView(new NgntKnob(CRect(x - 7, y, x + 103, y + 120), l, tag, accent, label, inverted));
 }
 
 }  // namespace
 
 NgntEditor::NgntEditor(Steinberg::Vst::EditController* controller)
-: VST3Editor(controller, "view", "ngnt.uidesc"), controller_(controller) {
+: AspectRatioVST3Editor(controller, "view", "ngnt.uidesc"), controller_(controller) {
+    setMinZoomFactor(0.6);   // smallest window: 636 x 444, same proportions as 1060 x 740
     refreshPresets();
 }
 
@@ -383,12 +408,13 @@ CView* NgntEditor::buildRoot() {
     root->addView(new NgntToggle(CRect(380, 520, 500, 560), l, 0, pink));
 
     // Unit II (wavefolder): knobs in two rows, Sum switch, Symmetry switch, Engage.
-    addKnob(root, l, 560, 190, 9, green, "CLEAN");
-    addKnob(root, l, 670, 190, 10, green, "+");
-    addKnob(root, l, 780, 190, 11, green, "-");
-    addKnob(root, l, 890, 190, 12, green, "+ RANGE");
-    addKnob(root, l, 560, 350, 13, green, "- RANGE");
-    addKnob(root, l, 670, 350, 14, green, "WET");
+    // FOLD is the clean parameter run backwards: up means more fold.
+    addKnob(root, l, 560, 190, 9, green, "FOLD", true);
+    addKnob(root, l, 670, 190, 10, green, "+ FOLD");
+    addKnob(root, l, 780, 190, 11, green, "- FOLD");
+    addKnob(root, l, 890, 190, 14, green, "WET");
+    addKnob(root, l, 670, 350, 12, green, "+ RANGE");
+    addKnob(root, l, 780, 350, 13, green, "- RANGE");
     root->addView(new NgntSwitch(CRect(560, 520, 860, 560), l, 15, green,
                                  {"LIMITER", "NEUTRAL", "DISTORTION"}));
     root->addView(new NgntToggle(CRect(900, 520, 1020, 560), l, 8, green));
